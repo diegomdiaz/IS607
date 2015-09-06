@@ -1,0 +1,93 @@
+
+#1
+
+Q: How many airplanes have listed speeds?
+A: 23 airplanes have listed speeds. 
+
+Code: select speed, count(*) from planes where speed is not null;
+
+Q: What is the minimum listed speed?
+A: Minimum listed speed = 90 
+
+Code: select min(speed) from planes;
+
+
+Q: What is the maximum listed speed?
+A: Maximum listed speed = 432
+
+Code: select max(speed) from planes;
+
+#2
+
+Q: What is the total distance flown by all of the planes in January 2013?
+A: total distance flown = 350217607
+
+Code: select sum(distance) from flights where year= 2013;
+
+Q: What is the total distance flown by all of
+the planes in January 2013 where the tailnum is missing
+A: Total distance flown by planes missing a tailnumber = 1784167
+
+Code: select sum(distance) from flights where year= 2013 and tailnum is null;
+
+
+#3
+
+Q: What is the total distance flown for all planes on July 5, 2013 grouped by aircraft manufacturer? 
+
+A1: Code using INNER JOIN
+
+select manufacturer, sum(distance) from planes inner join flights on planes.tailnum = flights.tailnum where flights.year = 2013 and day = 5 and month = 7 group by manufacturer;
+
+Output
+
+AIRBUS	195089
+AIRBUS INDUSTRIE	78786
+AMERICAN AIRCRAFT INC	2199
+BARKER JACK L	937
+BOEING	335028
+BOMBARDIER INC	31160
+CANADAIR	1142
+CESSNA	2898
+DOUGLAS	1089
+EMBRAER	77909
+GULFSTREAM AEROSPACE	1157
+MCDONNELL DOUGLAS	7486
+MCDONNELL DOUGLAS AIRCRAFT CO	15690
+MCDONNELL DOUGLAS CORPORATION	4767
+
+A2: code using LEFT OUTER JOIN
+
+select manufacturer, sum(distance) from planes left outer join flights on planes.tailnum = flights.tailnum where flights.year = 2013 and day = 5 and month = 7 group by manufacturer;
+
+
+Output
+
+AIRBUS	195089
+AIRBUS INDUSTRIE	78786
+AMERICAN AIRCRAFT INC	2199
+BARKER JACK L	937
+BOEING	335028
+BOMBARDIER INC	31160
+CANADAIR	1142
+CESSNA	2898
+DOUGLAS	1089
+EMBRAER	77909
+GULFSTREAM AEROSPACE	1157
+MCDONNELL DOUGLAS	7486
+MCDONNELL DOUGLAS AIRCRAFT CO	15690
+MCDONNELL DOUGLAS CORPORATION	4767
+
+Q3: How do the results compare?
+A3: We get the same output from both joins. 
+
+#4
+
+Q:Write and answer at least one question of your own choosing that joins information from at least three of the tables in the flights database.
+
+A: Query below reports the types of planes used, by airline, for all flights in December 2013. 
+
+select count(*), airlines.name, planes.type from flights left join planes on flights.tailnum = planes.tailnum 
+left join airlines on flights.carrier=airlines.carrier
+where flights.year = 2013 and flights.month = 12
+group by airlines.name, planes.type;
