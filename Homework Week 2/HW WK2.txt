@@ -85,9 +85,40 @@ A3: We get the same output from both joins.
 
 Q:Write and answer at least one question of your own choosing that joins information from at least three of the tables in the flights database.
 
-A: Query below reports the types of planes used, by airline, for all flights in December 2013. 
+A: Most frequently used type of airline and plane type for all flights in December 2013. 
 
 select count(*), airlines.name, planes.type from flights left join planes on flights.tailnum = planes.tailnum 
 left join airlines on flights.carrier=airlines.carrier
 where flights.year = 2013 and flights.month = 12
-group by airlines.name, planes.type;
+ group by planes.type, airlines.name
+ order by count(*) desc;
+
+4827	United Air Lines Inc.	Fixed wing multi engine
+4598	JetBlue Airways	Fixed wing multi engine
+4307	ExpressJet Airlines Inc.	Fixed wing multi engine
+4079	Delta Air Lines Inc.	Fixed wing multi engine
+2134	Envoy Air	
+1966	American Airlines Inc.	
+1544	US Airways Inc.	Fixed wing multi engine
+1544	Endeavor Air Inc.	Fixed wing multi engine
+1089	Southwest Airlines Co.	Fixed wing multi engine
+678	American Airlines Inc.	Fixed wing multi engine
+476	Virgin America	Fixed wing multi engine
+211	AirTran Airways Corporation	Fixed wing multi engine
+104	United Air Lines Inc.	
+89	Endeavor Air Inc.	
+68	JetBlue Airways	
+61	US Airways Inc.	
+59	Frontier Airlines Inc.	Fixed wing multi engine
+55	JetBlue Airways	Fixed wing single engine
+54	Alaska Airlines Inc.	Fixed wing multi engine
+50	Mesa Airlines Inc.	Fixed wing multi engine
+47	American Airlines Inc.	Fixed wing single engine
+28	Hawaiian Airlines Inc.	Fixed wing multi engine
+20	JetBlue Airways	Rotorcraft
+14	Delta Air Lines Inc.	
+14	American Airlines Inc.	Rotorcraft
+10	Southwest Airlines Co.	
+5	Envoy Air	Fixed wing single engine
+2	AirTran Airways Corporation	
+2	Frontier Airlines Inc.	
