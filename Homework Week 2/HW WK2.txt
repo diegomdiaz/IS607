@@ -85,7 +85,7 @@ A3: We get the same output from both joins.
 
 Q:Write and answer at least one question of your own choosing that joins information from at least three of the tables in the flights database.
 
-A: Most frequently used type of airline and plane type for all flights in December 2013. 
+A: Frequency of airline and plane type for all flights in December 2013. 
 
 select count(*), airlines.name, planes.type from flights left join planes on flights.tailnum = planes.tailnum 
 left join airlines on flights.carrier=airlines.carrier
