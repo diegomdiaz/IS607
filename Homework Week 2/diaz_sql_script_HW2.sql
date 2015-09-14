@@ -23,6 +23,8 @@ select manufacturer, sum(distance) from planes inner join flights on planes.tail
 #Same as above using LEFT OUTER JOIN
 select manufacturer, sum(distance) from planes left outer join flights on planes.tailnum = flights.tailnum where flights.year = 2013 and day = 5 and month = 7 group by manufacturer;
 
+#Both inner and left joins yield the same results. 
+
 #Question #4
 #Frequency of airline and plane type for all flights in December 2013. 
 select count(*), airlines.name, planes.type from flights left join planes on flights.tailnum = planes.tailnum 
