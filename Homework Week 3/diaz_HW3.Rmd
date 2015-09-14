@@ -1,0 +1,67 @@
+---
+title: "Homework Week 3"
+author: "Diego Diaz"
+date: "September 12, 2015"
+output: pdf_document
+---
+
+``` {r url1}
+#Using the autos database:
+theUrl <- ("https://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.data")
+```
+
+``` {r read.url}
+# including na.string = "?" argumen to prevent the values from being factorized.
+
+cars <- read.table(theUrl, header = FALSE, sep = ",", na.strings = "?")
+
+```
+
+``` {r sample1}
+#Review sample top rows.
+
+head(cars)
+```
+
+``` {r summary1}
+#Summary stats.
+summary(cars)
+```
+
+
+``` {r subset_columns}
+#Subsetting columns as per assignment. 
+cars_new <- cars[, 1:5]
+
+```
+
+``` {r sample2}
+#Review sample top rows from subsetted data.
+head(cars_new)
+
+```
+
+```{r convert2data.frame}
+#Converting data to a data.frame structure. 
+dfcars <- data.frame(cars_new)
+
+```
+
+``` {r add_column_names}
+#Adding the column names. 
+colnames(dfcars) <- c("symboling", "normalized_losses", "Make", "Fuel_Type", "Aspiration")
+
+```
+
+``` {r sample3}
+#Review sample top rows from data.frame. 
+head(dfcars)
+```
+
+``` {r summary2}
+#Summary stats. 
+summary(dfcars)
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
