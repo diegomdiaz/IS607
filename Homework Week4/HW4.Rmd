@@ -1,0 +1,156 @@
+---
+title: "Week 4 Assignment"
+author: "Diego Diaz"
+date: "September 20, 2015"
+output: html_document
+---
+
+
+
+**Loading the stringr library**
+
+``` {r loadlibrary}
+
+library(stringr)
+
+```
+
+4. Describe the types of strings that conform to the following regular expressions and construct an example that is matched by the regular expression
+
+a. [0-9]+\\$
+
+**In this example, the pattern we are matching is a sequence of all digits within the 0-9 range, quantified by the "+" regular expression, and a literal match on the dollar sign at the edge.**
+
+``` {r 4.a}
+
+container1 <- c("4425$", "1113", "335A", "$11132", "23 35$", "   35  $352 035$")
+
+unlist(str_match_all(container1, "[0-9]+\\$"))
+
+
+
+```
+
+b. \\b[a-z] {1,4} \\b
+
+**In this example, the pattern we are matching is a sequence of bound, lower case letters with a quantifier. This quantifier is matched at least one time and and no more than four times.** 
+
+``` {r 4.b}
+
+container2 <- c("hello", "Firs", "plot", "pear", "AAAA")
+
+unlist(str_extract_all(container2, "\\b[a-z]{1,4}\\b"))
+
+```
+
+c. .*?\\.txt$
+
+**In this example, the pattern we are matching is an optional sequence of characters that end in ".txt" marked by an "$".**
+
+``` {r 4.c}
+
+container3 <- c("fileloc.txt", ".txt", "txt", "location .txt", ".text location", "the lost arc of.txt")
+
+unlist(str_extract_all(container3, ".*?\\.txt$"))
+
+```
+
+d. \\d{2}/\\d{2}/\\d{4}
+
+**In this example the pattern we are matching is: a)two digits followed by a forward slash b) another two digits followed by a forward slash c) four digits. This is accomplished by using the selected symbol \d and a quantifier. This pattern will only match strings with that very specific structure, including forward slashes.**
+
+``` {r 4.d}
+
+container4 <- c("01/12/1598", "01\12\1598", "01/12/1999", "1992/12/19", "02.12.2001")
+
+unlist(str_extract_all(container4, "\\d{2}/\\d{2}/\\d{4}"))
+
+
+```
+
+e. 
+**In this example, the patterns we are matching are: at least one character in between less/more than angle brackets followed by at least one additional character and another set of less/more than angle brackets with a forward slash and one backreference.**
+
+``` {r 4.e}
+
+
+container5 <-c("<test> hello </test>", "<body> header and print </body>", "<test> .. </test>",  "<test> hello </test1>")    
+
+unlist(str_extract_all(container5, "<(.+?)>.+?</\\1>"))
+
+
+```
+
+5. Rewrite the expression [0-9]+\\$ in a way that all elements are altered but the expression performs the same task. 
+
+**The first step is to replace the [0-9] range with the predefined character class [[:digit:]]. Then replace the "+" quantifier with another quantifier**
+**In the right hand section, we can replace the literal match on $ with word edge \b and a character class that includes $. This should give the same** **output as the previous example.** 
+
+``` {r 5}
+
+
+unlist(str_match_all(container1, "[[:digit:]]*\\b[$]"))
+
+
+```
+
+6. Consider the email address chunkylover53[at]aol[dot].com
+
+a. Transform the string to a standard email format using regular expressions.   
+
+``` {r 6.a}
+# step1
+email <- "chunkylover53[at]aol[dot].com"
+
+# step2
+email <- str_replace(email, pattern = "\\[at\\]", replacement = "@")
+
+#print 1st replacement
+email
+
+# step3
+email <- str_replace(email, pattern = "\\[dot\\].", replacement = ".")
+
+#print 2nd replacement
+email
+
+```
+
+b. Imagine we are trying to extract the digits in the email address. To do so we write the expression [[:digits:]]. Explain why this fails and correct 
+the expression.
+
+``` {r 6.b}
+
+email <- "chunkylover53[at]aol[dot].com"
+# First attemp using the current expression fails because we do not know if the extracted digits are part of a sequence. The five could have been in the front and the three could have been at the end of the email address. 
+ext <- str_extract_all(email, "[[:digit:]]")
+
+ext
+
+#To fix the issue, we need to add the quantifier "+" to make sure that the preceding items are matched one or more times before the next sequence is created. 
+
+ext <- str_extract_all(email, "[[:digit:]]+")
+
+ext
+
+```
+
+c. Instead of using predefined character classes, we would like to use the predefined symbols to extract the digit and the email address. To do so, we write the expression \\D. Explain why this fails and correct the expression. 
+
+```{r 6.c}
+email <- "chunkylover53[at]aol[dot].com"
+
+# This expression fails because it is using the special symbol for no digits. This means that it will extract any string that is not a digit.
+ext <- str_extract_all(email, "\\D")
+
+ext
+# To fix this issue, we use the lower case special symbol "\d"" and the "+" quantifier for the same reasons as the previous example. This should give us the correct output. 
+
+ext <- str_extract_all(email, "\\d+")
+
+ext
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
