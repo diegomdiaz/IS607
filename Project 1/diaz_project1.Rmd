@@ -1,0 +1,189 @@
+---
+title: "Project 1"
+author: "Diego Diaz"
+date: "September 27, 2015"
+output: 
+  html_document: 
+    toc: yes
+---
+
+For this project I will use the stringr library of functions.
+
+#Loading Necessary Libraries
+
+``` {r load_library}
+
+library(stringr)
+```
+
+#Retrieving the Data
+Data for this project will be retrieved from Github.  
+```{r getting_data}
+
+project_url = url("https://raw.githubusercontent.com/diegomdiaz/IS607/master/Project%201/tournamentinfo.txt")
+
+project_data = readLines(project_url, n = 198)
+
+```
+
+#Initial Cleanup
+
+Extracting only digits and words to get rid of lines that are not useful in this analysis.
+ 
+``` {r extracting_words}
+mydata <- unlist(str_extract_all(project_data, "\\W{1,2}.+\\w+"))
+
+```
+
+``` {r removing_first_two_rows}
+#Removing the first two rows of data since they are not needed.  
+mydata <- mydata [-c(1:2)]
+
+```
+
+#Subsetting the Data Using Logical Vectors
+
+At this point, I thought it would be easier if I split the data using a logical vector and then use do my matching. 
+
+``` {r separting_names_ids}
+
+mydata_names <- mydata [c(TRUE, FALSE)]
+
+mydata_ids <- mydata [c(FALSE, TRUE)]
+
+head(mydata_names)
+
+head(mydata_ids)
+
+```
+
+#Extracting Player Names
+Extracting the names of the chess players using the str_extract_all function. 
+
+``` {r extracting_name}
+
+mydata_names1 <- unlist(str_extract_all(mydata_names, "(\\b[[:upper:]-]+\\b\\s)+(\\b[[:upper:]-]+\\b){1}"))
+
+#taking a peak at my new vector. 
+head(mydata_names1)
+
+```
+
+#Extracting State Information
+Extracting the State information for each player using the str_extract_all function. 
+
+``` {r extracting_state}
+
+mydata_state <- unlist(str_extract_all(mydata_ids, "(\\b[[:upper:]]{2}\\b)"))
+
+#taking a peak at my new vector.
+head(mydata_state)
+
+```
+
+#Extracting Total Points
+Extracting Total Point information for each player using the str_extract_all function.
+
+``` {r extracting_tota_points}
+
+mydata_total <- unlist(str_extract_all(mydata_names, "[[:digit:]]\\.[[:digit:]]"))
+
+#taking a peak at my new vector.                            
+head(mydata_total)
+
+```
+
+#Extracting Pre Scores
+
+Extracting the Pre Score for each player in two steps using the str_extract_all function.
+
+``` {r extract_prescore }
+
+#Looking to match a pattern where we have R: followed by a space and digits. The is followed by a quantifier to match it at least one time, but not more than five times. No value should exceed this limit.
+
+pre_score <- unlist(str_extract_all(mydata_ids, "R:[ [:digit:]]{1,5}"))
+
+#Taking the previously created vector and matching only digits. This should help me get rid characters I do not need and any other spaces.  
+
+#Converting the pre score to numeric and unlisting it. 
+
+pre_score <- unlist(as.numeric(str_extract_all(pre_score, "[[:digit:]]+")))
+
+
+
+```
+
+#Extracting Opponent Numbers
+In this section, I need to extract the opponent numbers. As in the previous example, I find it more convenient to break this task into two steps. 
+
+``` {r extract_opponent_id}
+#In the first step, I want to extract the structure where a single upper case letter is followed by a space and a digit. The last part is quantified to occur at least two times, but not more than three times. 
+
+opponent_id <- str_extract_all(mydata_names, "\\b [[:upper:] ][ [:digit:]]{2,3}")
+
+#In the prior step, I was able to get part of the  output I needed, but it had extra spaces and characters that were not needed. In this step, I only match on digits to get rid of these extra characters.  
+
+opponent_id <- str_extract_all(opponent_id, "[[:digit:]]{1,2}")
+
+#I was new to the apply family of functions, but once I read about them it was what I needed for this task. In this next step, I am using the lapply to convert every element in the list to a numeric. This is needed for downstream analysis. 
+
+opponent_id <- lapply(opponent_id, as.numeric)
+
+head(opponent_id)
+
+```
+
+#Calculating Average Score
+
+This is the fun part! I have to confess that it took me some time to figure it out since I was not familiar with these techniques in R.  
+
+```{r calc_asp_opp}
+
+# Creating a lookup function that will return the prescore based on the "i" index. This corresponds to the number of rows, so it should work in our example. 
+lookup <- function (i){return (pre_score[i])}
+
+#After creating the lookup function above, I then take advantage of the lapply function to match/replace player index ID and pre_scores. These values are then stored in the score list.
+
+score <- lapply(opponent_id, lookup)
+
+#At this point, I now have the pre_score values and can, once again, use lapply functions to calculate the avarege. for this, I need the sum of each of the score elements and the their length. Once I have those values, I can then take the average in the Average_score vector. 
+
+pre_score_total <- unlist(lapply(score, sum))
+pre_score_length <- unlist(lapply(score, length))
+average_score <- round((pre_score_total)/(pre_score_length), 0)
+
+#reviewing the average score, to see if at least the first row matches sample output. 
+head(average_score)
+
+#It does!
+```
+
+At last I have all the fields I need to create the requested output. This is done in the step below. I also gave the columns better looking names and added a column for the ID. This is simply a numeric vector with 64 elements. I also made  sure that my stringAsFactors parameter = FALSE. 
+
+#Creating the Final Data Frame
+
+``` {r fina_data_frame}
+
+chess_df <- data.frame("ID" = 1:64, "Name"=mydata_names1, "State"=mydata_state, "Total Points"=mydata_total, "Pre-Rating"=pre_score,"Average Rating"=average_score, stringsAsFactors = FALSE)
+
+head(chess_df)
+
+```
+
+#Writing the Final Output
+In the last step, I will write the data frame to a csv file. This file will be written on my local working directory. 
+
+``` {r writing_output}
+
+write.csv(chess_df, file = "tournament_structure.csv")
+
+
+```
+
+
+
+
+
+
+
+
