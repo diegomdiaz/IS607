@@ -1,0 +1,278 @@
+---
+title: "week6_Assignment"
+author: "Diego Diaz"
+date: "October 3, 2015"
+output: 
+  html_document: 
+    highlight: tango
+    number_sections: yes
+    toc: yes
+---
+
+#Packages
+
+In this assignment, the following two packages will be used to tidy up, manipulate and transform the data. 
+
+``` {r load_library}
+
+library(tidyr)
+library(dplyr)
+
+```
+
+#CSV Data
+
+> Data source
+
+The untidy, wide format data set was generated using Excel and saved to csv called **week6_data.csv**. The CSV file used in this project is posted to Github in this [link](https://github.com/diegomdiaz/IS607/blob/master/Assignment%20Week%206/week6_data.csv)
+
+
+> Importing the csv datasource
+
+Importing the **week6_data.csv** file from my working directory. Of note is that the "Cities" variable values were originally imported as factors. To prevent this, I set the parameter stringAsFactors = FALSE.  
+
+```{r generating_csv}
+
+mydata = read.csv ("week6_data.csv", stringsAsFactors = FALSE)
+
+```
+
+
+#Inspecting
+
+> Taking a peak at the imported data
+
+After creating the data set in Excel, I want to see if how it displays in **R**. Additionally, I want to compare it to the original chart data to determine if they are equivalent. It looks like they are equivalent.
+
+**Original Chart** 
+
+
+![](C:\Users\Diego Diaz\Documents\GitHub\IS607\Assignment Week 6\arrival_chart_screenshot_original.png)
+
+**Recreated Chart**
+
+```{r inspecting_data}
+
+mydata
+
+```
+
+
+> Reviewing the structure of the data
+
+At this point, I wanted to see the structure of the data frame **mydata** to determine the data types of the variables. I also want to make sure that the character variables were not imported as factor and that my analysis variables are numerical. So far so good... it looks like I can move on to the next stage. 
+
+```{r structure}
+
+str(mydata)
+
+```
+
+
+#Subsetting
+
+> Removing columns and rows
+
+In the original and imported data set, I noticed that row #3 was full of **NAs** and therefore not usable. Additionally, I also noticed that the airline names were not carried through all the rows. At this point, I decided that I will remove the rows with **NAs** and the Airline  column or column **X**. 
+
+I could have done several procedures to accomplish this, but I decided to use negative subsetting in a single step. 
+
+```{r remove_column_row}
+mydata <- mydata [-3,-1]
+
+mydata
+
+```
+
+> Creating a new column for Airlines
+
+In the prior step I removed the **NAs** and column **X**. To replace the values in column **X**, I created a character vector with the names of the airlines in the order they appear. The new vector will be called **airlines** with a lowercase a.  
+
+```{r airline_vector}
+airlines <- c("Alaska", "Alaska", "AM WEST", "AM WEST")
+
+airlines
+
+```
+
+> Adding Airlines column and changing the first column name
+
+In this step, I append the Airlines vector I created earlier to the data frame.
+
+```{r add_column_dataframe}
+mydata[,"Airlines"] <- airlines
+
+mydata
+
+str(mydata)
+
+```
+
+
+In this step, I modify the column name for the first variable...I did not like the default name of **X.1**.
+
+```{r cng_column_name}
+
+colnames(mydata)[1] <- "Arrival"
+
+mydata
+
+str(mydata)
+
+```
+
+At this point, I am done with my basic data cleanup steps and can then move on to make this data tidy. 
+
+
+#Tidying Up
+
+The goal of this section is to transform the **mydata** data set into a tidy-compliant data set that plays well with **R**. 
+
+> Characteristic of Tidy Data
+
+1. Each **variable** is in its own column.
+2. Each **observation** is saved on its own row.
+3. Each **type** of observation is stored in a single table.
+
+> Coverting the data from a wide to a long format 
+
+In the original data set structure, the cities were across several columns. This made our data set wide and not ideal for analysis in **R**. In the tidy framework, this data set fails characteristic #1.  The purpose of this manipulation, using the **gather** function is to "gather"" the cities from column values to row values. 
+
+```{r gather_columns}
+
+mydata2 <- gather(mydata,"Cities", "n", 2:6, convert = TRUE)
+
+head(mydata2)
+
+str(mydata2)
+
+```
+
+> Setting up the dataset for further arrival analysis
+
+In the current state, the data does not meet all the requirements for a tidy data set - it fails characteristic #2. We still have multiple rows for the same observation. In this case, this is caused by the **Arrival** variable. To make this data set tidy and to prep it for further analysis, the unique values in this variable need to become variables. 
+
+This is accomplished by the **spread** function below. This function takes the unique values of the **Arrival** variable and coverts them into columns. It also re-arranges the analysis variable.  
+
+```{r spread_columns}
+
+mydata3 <- spread(mydata2, Arrival, n )
+
+head(mydata3)
+
+str(mydata3)
+
+```
+
+# Analysis
+
+In this section, I will perform several analysis of the data set to compare the arrival of both airlines. The goal is to determine which airline performed better on the On Time metric.
+
+
+As a warm-up, I will calculate the total mean for the **delayed** variable across both airlines. In this example, I am using the **summarize** function to summarize the total mean. 
+
+``` {r summary_total}
+
+tot_mean <- mydata3  %>% summarise(mean_delay=mean(delayed))
+
+tot_mean
+
+```
+
+> Renaming the On Time column
+
+I renamed the **On Time** column to **On_Time** to prevent an error that were caused by the **time** keyword. 
+
+```{r column_name}
+
+colnames(mydata3)[4] <- "On_time"
+
+mydata3
+
+```
+
+Okay, enough warm-ups. I now need to perform analysis on the arrival delays for the two airlines and reach a conclusion. For this assignment, I am assuming we need to determine which airline performed better in terms of delays.  
+
+> Simple Comparison
+
+In comparing delays between these two airlines, I want to know which airline has the highest absolute number of delays. For this analysis, I will group the airlines and then summarize an variable called **sum_delayed**. This variable is the sum of the delays. 
+
+In next step, I will use the **arrange** function to display the data in descending order using the previously created **sum_delayed** variable.  
+
+
+``` {r simple_comparison_airlines}
+
+mydata5 <- mydata3  %>%  
+  group_by(Airlines)  %>% 
+  summarize( sum_delayed = sum(delayed))
+
+arrange(mydata5, desc(sum_delayed))
+
+```
+
+The result of this analysis is that the **AM WEST** airline has 787 delays vs. 501 for the **Alaska** airline.
+
+Does this imply that the **Alaska** airline performed better than **AM WEST**? Let's take a look at a few summary statistics for those two airlines. 
+
+
+> Summary Statistics
+
+Although the sample is very small, I decided to run a few summary statistics on the grouped airline variables. The grouping of the airline's variable was done  using the **group_by** function and the  summarizing was done by the using the **summarize** function. The following variables are defined:
+
+1. max_delayed = maximum delayed value. 
+2. mean_delayed = mean delayed value. 
+3. sd_delayed = standard deviation of delayed values.
+
+``` {r summary_airlines}
+
+mydata6 <- mydata3  %>%  
+  group_by(Airlines)  %>% 
+  summarize( max_delayed = max(delayed), mean_delayed = mean(delayed), sd_delayed = sd(delayed))
+
+
+arrange(mydata6, desc(max_delayed))
+
+```
+
+
+Base on these summary statistics, I can tell the following about the two airlines:
+
+1. **AM WEST** has higher max_delayed at 415 vs. 305 for **Alaska**.
+2. **AM WEST** has higher mean_delayed at 157 vs. 100 for **Alaska**.
+3. **AM WEST** has higher sd_delayed at 147 vs. 120 for **Alaska**.
+
+So, does this mean that the **Alaska** airline has better On Time performance than the **AM WEST** airline? **Not so fast!** we are not normalizing the comparisons so it would not be fair to assume that **Alaska** has better performance than **AM WEST**. Although I will not do a full normalization of the variables, I will compare their ratios: 
+
+**Total delayed flights / Total Flights** 
+
+This ratio will allow me to better  compare the performance of each airline. I will accomplish this in the following steps:
+
+
+1. Will use the **Group_by** and **summarize** functions to perform grouped calculations. 
+2. Will use the **mudate** function to further manipulate the new variable called **ratio**.
+3. Will use the **arrange** function to display the data **ratio** variable in descending order. 
+
+
+``` {r ratio_airlines_group}
+
+mydata4 <- mydata3  %>%  
+  group_by(Airlines)  %>% 
+  summarize(sum_delayed = sum(delayed), sum_On_time = sum(On_time), Total_flights = (sum(delayed) + sum(On_time)))
+
+mydata4 <- mutate(mydata4, ratio = round((sum_delayed / (sum_On_time + sum_delayed)) * 100,2)) 
+
+arrange(mydata4, desc(ratio))
+
+```
+
+
+#Conclusion
+
+For this assignment, the performance metric was somewhat ambiguous. We could have used any of the measures in the above sections to determine which airline performed better on the delay criteria. 
+
+The **AM WEST** airline showed higher absolute delays as well as higher values in the statistical measures. On the other hand, if I was evaluating the performance of these two airlines, in terms of delays, I would compare the ratio of delays between the two. This would ensure I am comparing "apples-to-apples". 
+
+Based on this measure, I can conclude that the **Alaska** airline had a greater number of delays **13.27%** vs. **10.80%** for the **AM WEST** airline. 
+
+
+
