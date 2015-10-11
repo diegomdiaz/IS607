@@ -1,0 +1,288 @@
+---
+title: "diaz_project2_international_trade"
+author: "Diego Diaz"
+date: "October 11, 2015"
+output: 
+  html_document: 
+    highlight: tango
+    theme: readable
+    toc: yes
+---
+
+#Project Details
+
+> The Data
+
+For this project, I have selected the wide data set by **Jason Joseph** in Forum: Discussion 6/7: Untidy Data. This data comes from the US Census International Trade Data. **Jason** posted the csv file which has been downloaded into my working directory. The csv file is also posted on GitHub.
+
+> Analysis Question
+
+**Jason** is very specific about the type of analysis to conduct using this data set. As a result, this makes my task a lot easier. Below are the analysis questions that **Jason** asked and that I attempt to answer.   
+
+1. *Calculate the average goods export for each month over the three-year span*
+2. *Calculate the average goods import for each month over the three-year span*
+3. *Calculate the average services export for each month over the three-year span*
+4. *Calculate the average services import for each month over the three-year span*
+
+
+
+#Loading Required Libraries
+
+``` {r library(stringr)}
+library(stringr)
+library(tidyr)
+library(dplyr)
+
+```
+
+# Importing the Data
+
+In this section, I import the data from my working directory. I will control several parameters of the read.csv function to have greater control on what is imported. I will also take a peak at the data and determine the structure.
+
+```{r import_data}
+
+mydata <- read.csv("international_trade.csv", header = TRUE, nrows = 13, stringsAsFactors = FALSE)
+
+head(mydata)
+
+```
+
+# Subsetting
+
+There are several rows with no values in the imported data set. I remove those rows using the deplyr **filter** function and determine the structure of the data. 
+
+I looks like all the values are characters. 
+
+```{r subsetting1}
+
+mydata <- filter(mydata, X != "")
+
+head(mydata)
+str(mydata)
+
+```
+
+> New Column
+
+Because the Period column has nested values, I will remove this column in a later step. For now I will create a new column by subsetting by Recycling and using the **rep** function to generate a specific pattern. 
+
+```{r convert_character}
+
+column <- as.character(mydata$Period [c(TRUE,FALSE)])
+
+column
+
+column1 <- as.character(rep(column, each = 2))
+
+head(column1)
+
+```
+
+> Appending Column1 
+
+The previously created column will be appended to the data frame. Before this is done, I need to remove the the "Old" Period column. 
+
+```{r subsetting2}
+
+mydata[ ,"Period"] <- NULL
+mydata[ ,"Period"] <- column1
+
+head(mydata)
+
+```
+
+> Column Names
+
+This section renames the existing column names with more descriptive and user-friendly names. Because there were nested values for the some column names, I will use flags to distinguish between an export/import year. For example, 2013E = 2013 Exports and 2013I = 2013 Imports.
+
+```{r columnnames}
+
+colnames(mydata) <- as.character(c("Type", "2013E", "2013I", "2014E", "2014I", "2015E", "2015I", "Period"))
+
+head(mydata)
+
+```
+
+#Data Manipulations
+
+> Gather
+
+Although the data set is much cleaner and organized, it still has a wide format. To make it tidy, I will use the tidyr function **gather** to collapse the years into a column called **Years**. 
+
+
+```{r gather}
+
+mydata1 <- gather(mydata,"Years", "Dollars", 2:7)
+
+head(mydata1)
+
+```
+
+> Converting Dollars Column to Numeric
+
+So far, I have been working with characters; I need the analysis variables to be numeric to perform my analysis. This section converts the Dollars to numeric in two steps. The first step extracts the commas from the Dollar values and adds the extracted values to the Dollars vector. In the second step, the values in the Dollars vector are converted to numeric. 
+
+```{r asnumeric}
+#step1
+Dollars <- unlist(str_replace_all(mydata1$Dollars, ",", ""))
+
+#step2
+Dollars <- as.numeric(Dollars)
+
+
+```
+
+> Append Dollars Column
+
+This step removes the old **Dollars** column and appends the new **Dollars** vector to the data frame. 
+
+```{r append2}
+
+mydata1[ ,"Dollars"] <- NULL
+
+mydata1[ ,"Dollars"] <- Dollars
+
+head(mydata1)
+
+```
+
+> Spread
+
+In the prior step, the months were in a single column. This section uses the dplyr **spread** function to make each month a single column. I need this step in order to add an Import/Export flag to the data. The Import/Export flag will allow me to better subset the data. 
+
+```{r spread}
+
+mydata2 <- spread(mydata1, Period, Dollars)
+
+head(mydata2)
+
+
+```
+
+> Creating Import/Export Flag
+
+As mentioned earlier, this flag is needed to better subset the data. 
+
+```{r eximvector}
+
+exim <- as.character(rep(c("Export", "Import"), 6))
+
+
+```
+
+> Appending EXIMP Column
+
+This step appends the previously created Import/Export flag to the data frame. 
+
+```{r append_eximp}
+
+mydata2[ ,"EXIMP"] <- exim
+```
+
+> Reversing the Prior Spread Action 
+
+This step essentially reverses the previous **spread** action and makes the data easier to subset. 
+
+```{r gather2}
+
+mydata3 <- gather(mydata2, "Months", "Dollars", 3:6)
+
+head(mydata3)
+
+```
+
+
+
+# Data Analysis
+
+The data is almost ready for analysis. It still needs a few manipulations, but we can now begin to tackle the questions. 
+
+First, let's start with defining the scenarios... 
+
+> Defining Scenarios for Analysis
+
+Below are the new variables created for each type of scenario required by **Jason**. 
+
+1. *Scenario1 = Goods & Export for the past three years*
+2. *Scenario2 = Goods & Import for the past three years*
+3. *Scenario3 = Services & Export for the past three years*
+4. *Scenario4 = Services & Export for the past three years*
+
+
+I use the dplyr **filter** function to subset the mydata3 data frame for each scenario.
+
+
+```{r scenarios}
+
+scenario1 <- filter(mydata3, Type == "Goods " & EXIMP == "Export")
+scenario2 <- filter(mydata3, Type == "Goods " & EXIMP == "Import")
+scenario3 <- filter(mydata3, Type == "Services" & EXIMP == "Export")
+scenario4 <- filter(mydata3, Type == "Services" & EXIMP == "Import")
+
+```
+
+> Calculating the Mean for Each Scenario
+
+In this section, I calculate the mean value for each of the scenarios described above. For this task, I use the dplyr **group_by** and **summarise** functions to get the mean value by month. 
+
+
+1. *Mean1 or Avg1 = Mean of Scenario1*
+2. *Mean2 or Avg2 = Mean of Scenario2*
+3. *Mean3 or Avg3 = Mean of Scenario3*
+4. *Mean4 or Avg4 = Mean of Scenario4*
+
+
+```{r calc_mean}
+
+mean1 <- scenario1 %>% group_by(Months) %>% summarise(average = mean(Dollars))
+colnames(mean1) <- c("Months", "Avg1")
+mean1
+
+mean2 <- scenario2 %>% group_by(Months) %>% summarise(average = mean(Dollars))
+colnames(mean2) <- c("Months", "Avg2")
+mean2
+
+mean3 <- scenario3 %>% group_by(Months) %>% summarise(average = mean(Dollars))
+colnames(mean3) <- c("Months", "Avg3")
+mean3
+
+mean4 <- scenario4 %>% group_by(Months) %>% summarise(average = mean(Dollars))
+colnames(mean4) <- c("Months", "Avg4")
+mean4
+
+```
+
+> Joining Scenario Averages
+
+Now that I have a mean for each scenario, I then use the dplyr **inner_join** function to joing the averages for each scenario into a single table. This table is be part of the Conclusion. 
+
+```{r inner_join}
+
+ comb1 <- inner_join(mean1, mean2, by = "Months")
+
+ comb2 <- inner_join(comb1, mean3, by = "Months")
+
+ mean <- inner_join(comb2, mean4, by = "Months")
+
+
+```
+
+
+#Conclusion
+
+I was able to answer the questions posed by **Jason Joseph**. The table below  shows the monthly average for each scenario described in the initial section.  
+
+1. *Avg1 = avearge goods export for each month over the three-year span*
+2. *Avg2 = average goods import for each month over the three-year span*
+3. *Avg3 = average services export for each month over the three-year span*
+4. *Avg4 = average services import for each month over the three-year span*
+
+```{r combined_means}
+ mean
+
+```
+
+
+
+
+

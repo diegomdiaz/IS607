@@ -1,0 +1,343 @@
+---
+title: "Project 2 - Grains"
+author: "Diego Diaz"
+date: "October 10, 2015"
+output: 
+  html_document: 
+    highlight: tango
+    theme: readable
+    toc: yes
+---
+
+#Project Details
+
+> The Data
+
+For this project, I have selected the wide data set posted by **Mohan Kandaraj** in Forum: Discussion 6/7: Untidy Data. This data source comes from the US Department of Agriculture and it records Grain Stocks by Position and Month in Domestic Units in the United States for 2014 and 2015. 
+
+The data posted by **Mohan** is in the form of a text file. As a result, I use Regular Expressions to extract the relevant data values from this file and prepare the data for downstream analysis.  
+
+> Analysis Question
+
+As per Mohan, the objective is to *"find which grain is worst hit in 2015. That is the grain which has maximum decline in stock in 2015"*. For this analysis the Year-Over-Year trend between 2015 and 2014 are used to answer this question. The analysis variable is the **Off Farms**. 
+
+As per the USDA, this variable "includes **stocks** at mills, elevators, warehouses, terminals, and processors". 
+
+#Loading Required Libraries
+
+```{r loading}
+library(stringr)
+library(tidyr)
+library(dplyr)
+```
+
+#Getting the Data from Github
+
+```{r getting_data}
+project_url = url("https://raw.githubusercontent.com/diegomdiaz/IS607/master/Project%202/grains_datasource.txt")
+project_data <- readLines(project_url, n = 51, skipNul = TRUE)
+
+
+```
+
+> Taking a Peak at the Imported Data
+
+So far, it looks like this data set will require several cleanups and manipulations before it is ready for downstream analysis.  
+
+```{r peak1}
+head(project_data)
+typeof(project_data)
+
+```
+
+
+#Subsetting
+
+> Subsetting
+
+Having reviewed the data contents above, I will only keep rows from 11:51
+
+```{r subsetting1}
+
+project_data <- project_data [c(11:51)]
+
+head(project_data)
+
+```
+
+> Subsetting by Recycling
+
+In the current data structure, several values are nested in a structure that is not ideal for analysis; however, the structure appears to be consistent.   
+
+I exploit this pattern by subsetting by Recycling. In the second subsetting below, I remove the rows for December. These are only available for 2014 and not 2015. As a result, they are not relevant for this analysis.  
+
+```{r subsetting2}
+
+#First subsetting. 
+project_data <- project_data [c(FALSE, TRUE,TRUE,TRUE,TRUE,FALSE)]
+
+head(project_data)
+
+#Second subsetting removes the rows for December. 
+project_data <- project_data [c(TRUE, TRUE, TRUE, FALSE)]
+
+head(project_data)
+
+typeof(project_data)
+
+```
+
+#Extracting 
+
+> Extracting Digits
+
+In this section, I extract the digit strings using the **str_extract_all** function. I then review the output, structure and type of data structure. 
+
+```{r extracting1}
+digit1 <- str_extract_all(project_data, "[[:digit:],]{2,}+")
+
+head(digit1)
+str(digit1)
+typeof(digit1)
+
+```
+
+
+> Find and Replace
+
+The values have a comma and this does not allow me to coerce these characters to numeric. To fix this, I first need to get rid of the comma and then coerce it as a number. 
+
+
+```{r extracting5}
+
+digit2 <- str_replace_all(digit1, ",","")
+
+head(digit2)
+
+typeof(digit2)
+
+```
+
+I am not sure why the output from the **str_replace_all** function is so different from the input. As a result of this, I will now extract the digit characters one more time.  
+
+```{r extracting6}
+
+digit3 <- str_extract_all(digit2, "[[:digit:]]+")
+
+head(digit3)
+str(digit3)
+
+```
+
+
+I finally have the output I need to coerce the digit characters into numeric. This is a must for downstream analysis. 
+
+> Coersing to Numeric
+
+In this sections, I use the **lapply** function for coercing digit characters into numeric.   
+
+```{r coersing_1}
+
+digit4 <- lapply(digit3,as.numeric)
+
+head(digit4)
+
+str(digit4)
+
+```
+
+# Creating a Data Frame
+
+At this point, I needed to convert my numeric list into a data frame. Searching online, I found an extremely helpful function to accomplish this task. This comes from Prof. Jason Bryer PhD. 
+
+To access additional details click this link [http://www.r-bloggers.com/converting-a-list-to-a-data-frame/]
+
+> Loading the Required Functions
+
+```{r convert2dataframe_1}
+require(devtools)
+source_gist(4676064)
+
+```
+
+> Converting the Number List to a Data Frame
+
+```{r convert2dataframe_2}
+
+df <- as.data.frame(digit4)
+
+head(df)
+
+str(df)
+
+```
+
+
+# Additional Data Manipulations
+
+> Adding Back Additional Details
+
+At this point, the data frame does not have column headers, month or grain information. I needed to strip that level of detail in order to  create a better data structure that's more conducive for downstream analysis. In the next sections, I recreate the missing details and "glue" it back to the data frame. 
+
+> Creating the Month Vectors  
+
+I can easily add back the month information because it is a repeating sequence of the following months: March, June and September. This sequence is repeated seven times in the new **months** column. This month column is created by a vector using the **rep** function with seven repetitions.
+
+```{r month_vector}
+
+months <- rep(c("March", "June", "September"), 7)
+
+months
+
+```
+
+
+
+> Creating the Grain Vectors
+
+Similarly to the new **months** vector, I create a vector with the types of grains in the data. In this case, each element is in the vector is repeated three times.
+
+```{r grain_vector}
+
+grain <- rep(c("Corn", "Sorghum", "Oats", "Barley", "All Wheat", "Durum Wheat", "Soybeans"), each=3)
+
+grain
+
+```
+
+> Creating the Year Vectors
+
+As in the **months** and **grain** vectors, I also create vectors for the 2014 and 2015 years. I will continue to use the **rep** function to repeat each element 21x. I then append these vectors to the data frames below.  
+
+```{r year_vectors}
+
+#2014
+Y14d <- rep(c("Y2014"), 21)
+Y14d
+
+#2015
+Y15d <- rep(c("Y2015"), 21)
+Y15d
+
+```
+
+> Appending the Months and Grain Vectors to the Data Frame
+
+In this step, I append the **months** and **grain** vectors to the df data frame.  
+
+```{r append_month_grains}
+
+df[,"Months"] <- months
+df[,"Grain"] <- grain
+
+```
+
+#Tyding Up
+
+After thinking about the type of downstream analysis required, I determined that subsetting the data set and then later appending them by years would facilitate this analysis. For this step, I used the dplyr **select** function to subset the data set into separate 2014 and 2015 data frames named **Y14** and **Y15**.
+
+> Subsetting the Data Frame
+
+```{r subsetting_df}
+
+
+Y14 <- select(df, X1:X3, Months, Grain)
+
+Y15 <- select(df, X4:X6, Months, Grain)
+
+head(Y14)
+head(Y15)
+
+```
+
+> Adding the Year Columns
+
+Each subsetted data set now represents a single year. At this point, I can now add the year columns to the data frames for the respective year. 
+
+```{r adding_back_years}
+
+Y14[, "Year"] <- Y14d
+Y15[, "Year"] <- Y15d
+
+head(Y14)
+head(Y15)
+
+
+```
+
+> Renaming the Columns
+
+Up until this point, the column names have not been too important. Going forward, the column names for the two data sets needs to match because I will append the **Y14** and **Y15** data frames. In this step, I name the columns.  
+
+```{r columns_rename}
+
+colnames(Y14) <- c("On_Farms", "Off_Farms", "Total", "Month", "Grain", "Year")
+colnames(Y15) <- c("On_Farms", "Off_Farms", "Total", "Month", "Grain", "Year")
+
+head(Y14)
+head(Y15)
+
+```
+
+> Appending the Datasets
+
+Appending the **Y14** and **Y15** data frames is the last step before we can analyse the data and answer **Mohan's** question. For this task I use the dplyr **bind_rows** function.  
+
+```{r append_dataset}
+
+ytotal <- bind_rows(Y14,Y15)
+
+ytotal
+
+```
+
+
+#Downstream Analysis
+
+After all the cleaning, manipulations and tidying up, the data is **finally ready for analysis!**
+
+> Groupign and Summarizing
+
+The data set has both monthly and yearly time periods. In earlier steps, I removed the month of December since we have not reached that quarter for 2015. At this point, I only need  the following months: March, June and September. To answer **Mohan's** question, I need summarize the data and group by both **Grain** and **Year**. The analysis variable here will be **Off_Farms** Domestic Units. 
+
+```{r group_sum}
+
+ytotal1 <- ytotal %>% group_by(Grain, Year) %>% summarize(Total_Sum = sum(Off_Farms))
+
+head(ytotal1)
+
+```
+
+> Spreading
+
+Although keeping all of my annual time periods in a column made some of manipulations easier, now I need to make the annual time period values their own columns. This facilitates the Year-Over-Year calculation in the next step. For this step, I use the tidyr **spread** function to accomplish this. 
+
+```{r analysis_spreading}
+
+
+ytotal2 <- spread(ytotal1, Year, Total_Sum)
+
+head(ytotal2)
+
+```
+
+
+> Adding the YOY Trend Calculation
+
+In this section, I am now ready to do the Year-Over-Year calculation between **Y2015** and **Y2014**. For this step, I use the dplyr **mutate** function to calculate a new field called **YOY_Trend**. 
+
+I also arrange the results so I can see maximum decrease at the top. For this step, I use the dplyr **arrange** function. 
+
+```{r analysis_mutating_arranging}
+
+ytotal3 <- ytotal2 %>% mutate(YOY_Trend = (Y2015 / Y2014)-1)
+
+arrange(ytotal3, (YOY_Trend))
+
+```
+
+
+#Conclusion
+
+Based on this analysis, I can conclude that **Sorghum** was worst hit in 2015. This grain experienced the maximum Year-Over-Year decline, **-43.28%**, for comparable time periods.
+

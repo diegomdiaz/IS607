@@ -1,0 +1,239 @@
+---
+title: "diaz_project2_crime_stats"
+author: "Diego Diaz"
+date: "October 11, 2015"
+output: 
+  html_document: 
+    highlight: tango
+    toc: yes
+---
+
+# Project Details
+
+> The Data
+
+For this project, I have selected the wide data set by **Brian Kreis** in Forum: Discussion 6/7: Untidy Data. This data comes from the FBI Uniform Crime Reports. **Brian** posted the csv file which has been downloaded into my working directory. The csv file is also posted on GitHub. 
+
+> Analysis Question
+
+As per **Brian**, this data set *"could be used to look at crime levels for different types of crime in various sized cities. For example, property versus violent crimes in different city sizes per 100,000 in population."* I cannot transform the Population Groups into 100K intervals. As a result, I will focus on comparing Property vs. Violent crimes in different Population Groups. This is a similar analysis. 
+
+# Loading the Required Libraries
+
+```{r loading_libraries}
+
+library(stringr)
+library(tidyr)
+library(dplyr)
+
+```
+
+# Importing the Data
+
+In this section, I import the data from my working directory and control several parameters of the **read.csv** function to have greater control on what is imported. I also take a peak at the data and determine the structure.   
+
+```{r loading_data}
+
+mydata <- read.csv("crimestatistics.csv", header = TRUE, nrows = 42, skip = 3, stringsAsFactors = FALSE)
+
+head(mydata)
+str(mydata)
+
+```
+
+#Subsetting
+
+> Subsetting the Imported Data Set
+
+The imported data set has extra columns and rows that are not needed in this analysis. For example, I only need columns from **Population.group to Arson**. For the rows, I need to remove the values with the **Percent change** values from column **X**. Both of these tasks are  accomplished by using the dplyr functions **select** and **filter**, respectively.  
+
+```{r subsetting1}
+#Subsetting columns
+mydata <- select(mydata, Population.group:Arson)
+head(mydata)
+
+#Subsetting rows
+mydata <- filter(mydata, X != "Percent change")
+head(mydata)
+
+```
+
+> Additional Subsetting
+
+In the current data structure, several values are nested in a structure that is not ideal for analysis. For example the **Population.group** values are not carried through all rows. This pattern appears to be consistent. As a result, I use subsetting by Recycling to extract those values and add them to the **column1** vector. I then repeat each value in the **column1** vector two times so they can be appended back at a later stage. 
+
+```{r columns}
+
+column1 <- mydata$Population.group[c(TRUE, FALSE)]
+
+column1 <- rep(column1, each = 2)
+
+head(column1)
+
+```
+
+
+
+```{r appending_columns}
+
+mydata[ ,"Population.group"] <- NULL
+mydata[ ,"Population.group"] <- column1
+head(mydata)
+
+```
+
+> Column Names
+
+Rename the columns to give them shorter, more user-friendly names. I also made sure to add underscores in between the words so the new column name do not cause issues with the deplyer **mutate** functions.  
+
+```{r column_names}
+colnames(mydata) <- c("Date", "Violent_Crime", "Murder", "Rape", "Robbery", "Assault", "Property_Crime", "Burglary", "Theft", "Auto_Theft", "Arson", "Population_Groups")
+
+head(mydata)
+
+str(mydata)
+
+```
+
+#Data Manipulations
+
+> Gather
+
+Columns 2:11 represent types of crimes and make the data set very wide. I use the tidyr function **gather** to collapse those columns into a new column called **"Types_of_Crimes"**. This should make my downstream analysis easier.  
+
+```{r gather}
+
+mydata1 <- gather(mydata, "Types_of_Crimes", "Counts", 2:11)
+
+head(mydata1)
+
+```
+
+> Spread
+
+The annual dates, 2012 and 2013, are in  the **Date** column and make any Year-Over-Year calculations more difficult. I use the tidyr function **spread** to make each date value its own column.  
+
+```{r spread}
+
+mydata2 <- spread(mydata1, Date, Counts)
+
+head(mydata2)
+
+str(mydata2)
+
+```
+
+
+> Converting Characters to Numeric
+
+My data is almost ready for analysis, but the analysis values are still characters. I need to convert them to numeric before any analysis can be done. There are two steps in this process. The first step is to remove the comma for the digit characters. The second step is to take the "clean" digit characters, without the comma, and coerce them to numeric.
+ 
+
+```{r convering2_numeric}
+
+Y2012 <- unlist(str_replace_all(mydata2$`2012`, ",", ""))
+Y2012 <- as.numeric(Y2012)
+
+head(Y2012)
+str(Y2012)
+
+Y2013 <- unlist(str_replace_all(mydata2$`2013`, ",", ""))
+Y2013 <- as.numeric(Y2013)
+
+head(Y2013)
+str(Y2013)
+
+```
+
+> Removing & Appending Columns
+
+In the prior step, I converted the digit characters to numeric via coercion and  added  two new date vectors, **Y2012** and **Y2013**. I now remove the old date vectors and append the new numeric vectors to the data frame.
+
+```{r removing_appending_columns}
+
+mydata2[ ,"2012"] <- NULL
+mydata2[ ,"2013"] <- NULL
+
+#Added the Y to make the year a character. If this step is not done, then the mutate function will not work correctly. 
+
+mydata2[ ,"Y2012"] <- Y2012
+mydata2[ ,"Y2013"] <- Y2013
+
+head(mydata2)
+
+str(mydata2)
+
+```
+
+
+
+> Subsetting by Crimes
+
+As mentioned earlier, I will focus on Property and Violent Crimes in this analysis. In this section I use the dplyr **filter** function to subset the data into two data frames, one for each crime type.
+
+```{r subsetting_crimes}
+#crime1 = mydata2 subset by Violent_crime
+vcrime <- filter(mydata2, Types_of_Crimes == "Violent_Crime")
+
+vcrime
+
+#crime2 = mydata2 subset by Property_Crime
+pcrime <- filter(mydata2, Types_of_Crimes == "Property_Crime")
+
+pcrime
+
+
+```
+
+#Downstream Analysis
+
+> Mutate
+
+The data is now ready for some analysis. In this section, I create a new Year-Over-Year trend variable for each crime type data frame. I do this using the dplyr **mutate** function. 
+
+```{r mutate}
+
+#Creating the Violent_Crime_Trends variable from the violent crimes data frame subset 
+vcrime1 <- vcrime %>% mutate(Violent_Crime_Trends = round((((Y2013 / Y2012)-1)*100),2))
+            
+head(vcrime1)
+
+#Creating the Property_Crime_Trends variable from the property crimes data frame subset 
+pcrime1 <- pcrime %>% mutate(Property_Crime_Trends = round((((Y2013 / Y2012)-1)*100),2))
+            
+head(pcrime1)
+
+```
+
+> Select 
+
+In the previous step, I introduced a new Crime Trend variable. I now subset data frames by a few columns using the dplyr **select** function. I also include the new Crime Trend Variables. 
+
+```{r select}
+
+#Selecting a few columns from the vcrime1 data frame 
+vcrime2 <- select(vcrime1, Population_Groups, Violent_Crime_Trends) 
+
+head(vcrime2)
+
+#Selecting a few columns from the pcrime1 data frame
+pcrime2 <- select(pcrime1, Population_Groups, Property_Crime_Trends)
+
+head(pcrime2)
+
+```
+
+> Inner Join
+
+Now that I have Crime Trends for both Violent and Property crimes, the next step is to compare these two trends side-by-side. I use the dplyr **inner_join** function to join the two data frames and get the trend variable from each data frame side-by-side. Both data frames have the same **Population_Groups** values so rows will not be dropped. 
+
+```{r join}
+
+inner_join(vcrime2, pcrime2, by = "Population_Groups")
+
+pcrime2
+
+```
+
+#Conclusion
+Based on the analysis, it appears that crime has **decreased** for both property and violent crimes across all population groups between 2012 and 2013. 
