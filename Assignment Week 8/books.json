@@ -1,0 +1,24 @@
+{"books_information" : [
+
+{
+"Book_Title" : "The Martian",
+"Author_Name" : "Andy Wier",
+"Genre": "Science Fiction",
+"Pages": 387
+},
+
+{
+"Book_Title" : "The Hunt for Red October",
+"Author_Name" : "Tom Clancy",
+"Genre" : "Thriller and Suspense",
+"Pages": 387
+},
+
+{
+"Book_Title" : "Automated Data Collection with R",
+"Author_Name" : ["Simon Munzert", "Christian Rubba", "Peter Meibner", "Dominic Nyhuis"],
+"Genre" : "Computer Science",
+"Pages" : 480
+}]
+
+}
