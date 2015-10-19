@@ -1,0 +1,136 @@
+---
+title: "Assignment_Week_8"
+author: "Diego Diaz"
+date: "October 18, 2015"
+output: 
+  html_document: 
+    highlight: tango
+    theme: readable
+    toc: yes
+---
+
+#Loading Required Libraries
+
+```{r required_libraries}
+
+library(XML)
+library(rvest)
+library(jsonlite)
+
+```
+
+#Project Objective and Data Structure
+
+> Objective
+
+The objective of the **Week 8 assignment** is to determine if data, produced in three different file conventions, will generate the same data frames once it is imported into **R**. The data file conventions are **HTML**, **XML**, **JSON**. 
+
+These data sources have been posted to the following Github links: 
+
+1. [books.html](https://raw.githubusercontent.com/diegomdiaz/IS607/master/Assignment%20Week%208/books.html) 
+2. [books.xml](https://raw.githubusercontent.com/diegomdiaz/IS607/master/Assignment%20Week%208/books.xml)
+3. [books.json](https://raw.githubusercontent.com/diegomdiaz/IS607/master/Assignment%20Week%208/books.json)
+
+
+> Data Structure
+
+In this assignment, the data is composed of attributes from three books. All three data sources have the same data and the following column names:
+
+* Book_Title
+* Author_Name
+* Genre
+* Pages
+
+The book selections are as follow:
+
+1. **The Martian** by Andy Wier. The genre is Science Fiction and it has 387 pages.
+
+2. **The Hunt for Red October** by Tom Clancy. The genre is Thriller and Suspense and it has 387 pages. 
+
+3. **Automated Data Collection with R** by Simon Munzert, Christian Rubba, Peter Meibner and Dominic Nyhuis.The genre is Computer Science and it has 480 pages
+
+#HTML
+
+> Importing the Data
+
+In this example, I import the data from Git hub using the **html** function, from the **rvest** library, into the **url_html** container. 
+
+```{r books_html_import}
+
+#Importing the data from Github. 
+url_html <- html("https://raw.githubusercontent.com/diegomdiaz/IS607/master/Assignment%20Week%208/books.html", encoding = "UTF-8")
+
+```
+
+> Converting to Data Frame
+
+At this point, the data is now in the **url_html** container and I need to read the table within the data. For this task I use the **readHTMLTable** function to extract the table elements into the **books_html** variable. Interestingly, I am setting my **stringAsFactors** parameters = FALSE, but I still get factors in my data frame. 
+
+
+```{r books_html_data_frame}
+
+books_html <- readHTMLTable(url_html, header = TRUE, as.data.frame = TRUE, stringAsFactors = FALSE)
+
+str(books_html)
+
+```
+
+
+#XML
+
+> Importing the Data
+
+In the prior HTML example, I imported the  data from Github. Here, I will work with an **XML** file saved to my working directory. For importing this file, I will use the **xmlParse** function from the **XML** library. One advantage of this function is that it "Validates" the **XML** document and will prompt if there are any issues with the file's DTD structure. 
+
+
+```{r xml_import}
+#using the Validate = True option to validate the file and DTD structure. 
+books_xml <- xmlParse(file = "books.xml", validate = TRUE) 
+
+#takign a peak at the imported xml code
+str(books_xml)
+
+```
+
+
+> Converting to Data Frame
+
+I now convert the data in the **books_xml** variable into a data frame using the **xmlToDataFrame** function from the **XML** library. 
+
+```{r xml_converting2df}
+dfxml <- xmlToDataFrame(books_xml, stringsAsFactors = FALSE)
+
+str(dfxml)
+
+
+```
+
+
+#JSON
+
+> Importing the Data & Converting to Data Frame
+
+As in the XML example, I chose to import the **books.json** file from my working directory. I also selected the jsonlite library to both import the file into the **books_json** variable and, in the process, convert the file into a data frame. 
+
+```{r json_import_and_dataframe}
+#importing and convertign to data frame 
+books_json <- fromJSON("books.json", simplifyDataFrame = TRUE)
+
+#structure of the imported data frame
+str(books_json)
+
+```
+
+
+#Conclusion
+
+I was able to convert the books data sources into data frames in **R**. Once in a data frame, I was able to inspect the data using the **View()** function to generate a table. Additionally, I used the **str()** function to see the data structure for each data frame. 
+
+Overall, all the file formats and conversion methods did a good job at turning the data into data frame; however, there were some subtle differences. In the **HTML** conversion, for example, the **readHTMLTable** function turned all the data values into factors even though I had **stringAsFactors = FALSE**. For the the **XML** conversion, the **stringAsFactors = FALSE** did work and the all the values were characters, including the pages. Finally, I was able to make the pages integers in the **JSON** file and did not need any additional coercion.   
+
+In the **JSON** data frame, the Author Name with multiple authors was turned into a nested list. This did not displayed well in the table format. Lastly, the headers for each data frame were different as and varied as result of the file structure - the **XML** headers were the the clearest. 
+
+I can conclude the resulting data frames were similar but not identical. 
+
+
+
