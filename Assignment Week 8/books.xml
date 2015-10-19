@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!DOCTYPE book_information [
+<!ELEMENT book_information (book)>
+<!ELEMENT book (Book_Title,Author_Name,Genre,Pages)>
+<!ELEMENT Book_Title (#PCDATA)>
+<!ELEMENT Author_Name (#PCDATA)>
+<!ELEMENT Genre (#PCDATA)>
+<!ELEMENT Pages (#PCDATA)>
+<!ATTLIST book id CDATA #IMPLIED>
+
+]>
+
+<book_information>
+	<book id="1">
+		<Book_Title>The Martian</Book_Title>
+		<Author_Name>Andy Wier</Author_Name>
+		<Genre>Science Fiction</Genre>
+		<Pages>387</Pages>
+
+	</book>
+
+	<book id="2">
+
+		<Book_Title>The Hunt for Red October</Book_Title> 
+		<Author_Name>Tom Clancy</Author_Name>
+		<Genre>Thriller and Suspense</Genre>
+		<Pages>387</Pages>
+
+	</book>
+
+
+	<book id="3">
+
+		<Book_Title>Automated Data Collection with R</Book_Title> 
+		<Author_Name>Simon Munzert, Christian Rubba, Peter Meibner, Dominic Nyhuis</Author_Name>
+		<Genre>Computer Science</Genre>
+		<Pages>480</Pages>
+
+	</book>
+
+
+</book_information>
