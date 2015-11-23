@@ -1,0 +1,182 @@
+---
+title: 'Week 11/12 Assignment: Document Classification'
+author: "Diego Diaz"
+date: "November 21, 2015"
+output: 
+  html_document: 
+    highlight: tango
+    theme: readable
+    toc: yes
+---
+
+
+#Project Objective
+
+Objective of this project is to classify documents using supervised learning techniques.  
+
+#Loading Required Libraries
+
+```{r loading libraries, message=FALSE}
+
+library(tm)
+library(RTextTools)
+
+```
+
+#Getting the Data
+The data used in this project comes from the spambase data set. 
+
+```{r data}
+#Getting the data from the spambase dataset
+data <- read.csv("http://archive.ics.uci.edu/ml/machine-learning-databases/spambase/spambase.data", header = FALSE)
+
+```
+
+
+# Subsetting the Data
+In this data set, column 58 denotes if the email was spam or ham: Spam = 1 and ham = 0. For a full explanation of the variables, please visit this [link](http://archive.ics.uci.edu/ml/datasets/Spambase).  In this section, the data frame is prepped so it can be loaded to the training models.  
+
+In the first step, `label` data frame is created using column *58*. In the second step,  a data frame using columns *1-57* is created.   
+
+
+
+```{r subsetting}
+
+#Subsetting the spam-ham labels
+labels <- data[58] 
+
+#Removing the labels column
+data <- data[,1:57] 
+
+
+
+```
+
+#Training and Classifying
+
+> Creating a Container with the Data
+
+In this step, a container is created using the previously subsetted data frames. The training and test size arguments are also defined.  
+
+```{r container}
+container <- create_container(data, t(labels), trainSize = 1:2500, testSize = 2501:4601, virgin = FALSE)
+
+```
+
+> Implementing Supervised Classification Models
+
+For this project, I will use three supervised classification models: `Support Vector Machines (SVM)`, `Random Forest` and `Maximum Entropy`. 
+
+*Train Models*
+
+```{r models_train}
+
+#Support Vector Machines
+svm_model <- train_model(container, "SVM")
+
+#Random Forest
+tree_model <- train_model(container, "TREE")
+
+#Maximun Entropy
+maxent_model <- train_model(container, "MAXENT")
+
+
+```
+
+*Classify Models*
+
+```{r models_classify}
+
+#Support Vector Machines
+svm_out <- classify_model(container, svm_model)
+
+#Random Forest
+tree_out <- classify_model(container, tree_model)
+
+#Maximun Entropy
+maxent_out <- classify_model(container, maxent_model)
+
+
+```
+
+
+> Evaluating the Models
+
+In this section, the models are evaluated to determine their performance. 
+
+*Classification Results*
+```{r models_evalute}
+
+#Support Vector Machines
+head(svm_out)
+
+#Random Forest
+head(tree_out)
+
+#Maximun Entropy
+head(maxent_out) 
+
+
+```
+
+
+*Creating a new data frame*
+
+In this step, a new data frame `labels_out` is created to  compare the models side-by-side with the correct classifications. 
+
+```{r labelsdf}
+
+labels_out <- data.frame (labels = labels[2501:4601,1], svm = svm_out, tree = tree_out, entropy = maxent_out, stringsAsFactors = FALSE)
+
+head(labels_out)
+
+```
+
+
+> Reviewing Performance
+
+*Performance for the Support Vector Machines Model*
+
+```{r perf_svm}
+#Support Vector Machines
+
+#Table
+table(labels_out[,1] == labels_out[,2])
+
+#Probability Table
+prop.table(table(labels_out[,1] == labels_out[,2]))
+
+
+```
+
+*Performance for the Random Forest Model*
+
+```{r perf_tree}
+#Random Forest
+
+#Table
+table(labels_out[,1] == labels_out[,4])
+
+#Probability Table
+prop.table(table(labels_out[,1] == labels_out[,4]))
+```
+
+*Performance for the Maximum Entropy Model*
+
+```{r perf_entropy}
+#Maximun Entropy
+
+#Table
+table(labels_out[,1] == labels_out[,6])
+
+#Probability Table
+prop.table(table(labels_out[,1] == labels_out[,6]))
+
+
+```
+
+
+#Conclusion
+In terms of overall accuracy, the Random Forest model had the best performance by classifying the ~76% of the documents correctly. The Maximum Entropy model comes in a close second at 70%. The worst performance, and this is surprising, comes from the SVM model with a low value of 57%.   
+
+
