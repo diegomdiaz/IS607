@@ -1,0 +1,409 @@
+---
+title: "Final Project"
+author: "Diego Diaz"
+date: "December 16, 2015"
+output: 
+  html_document: 
+    highlight: tango
+    theme: readable
+    toc: yes
+---
+
+```{r include=FALSE, cache=FALSE}
+# DO NOT REMOVE
+# THIS IS FOR SETTING SOME PLOTTING PARAMETERS SO THAT YOUR PLOTS DON'T TAKE UP TOO MUCH SPACE
+# IF YOU WOULD LIKE TO CHANGE THESE, SEE HELP FILES ON THE par() FUNCTION
+# OR ASK FOR HELP
+library(knitr)
+## set global chunk options
+opts_chunk$set(fig.path='figure/manual-', cache.path='cache/manual-', fig.align='center', fig.show='hold', par=TRUE)
+## tune details of base graphics (http://yihui.name/knitr/hooks)
+knit_hooks$set(par=function(before, options, envir){
+if (before && options$fig.show!='none') par(mar=c(4,4,.2,.1),cex.lab=.95,cex.axis=.9,mgp=c(2,.7,0),tcl=-.3)
+})
+```
+
+
+#Project Motivation
+
+> Background
+
+Peer-to-peer networks are revolutionizing many businesses, including the personal and business lending industry. Lending Club (LC), along with other competitors, efficiently matches people wanting to borrow and lend online without the need for backs. Through the loan underwriting process, LC collects a wealth of information about borrowers that is used to determine the credit worthiness  and the interest rate they should pay. As a result, lenders only have to focus on the risk they want to take (i.e credit worthiness of the borrower), the amount and duration of the loan. Despite this, a small percentages of loans among all types of borrower defaults, meaning they fail to pay their obligation. This is negative outcome that all lenders want to minimize.  
+
+> Description Field
+
+One of the fields available for analysis is the "Description" of the loan. In this field, borrower have the opportunity to describe the need for their loan in more detail and answer potential questions from borrowers. 
+
+> Project Objectives
+
+LC's numerous categorical and continuous variables have been used to produce models to determine which borrowers are least likely to default. Not a lot of analysis has been done in analyzing the description field to determine if it is a good indicator of the likelihood of default.  
+
+In this project, I  apply three types of analysis to determine if this field can be used to predict future defaults. The analysis will focus on:  
+
+1. Character Counts
+2. Word Frequency
+3. Classification Methods
+
+I  use visualization techniques to describe the data or the results of the analysis. 
+
+#Loading Required Libraries
+
+```{r  message = FALSE}
+
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+library(tm)
+library(RTextTools)
+library(SnowballC)
+library(maps)
+library(wordcloud)
+library(RCurl)
+
+```
+
+#Loading the Lending Club Data from Github
+
+LC data has been posted to Github in a csv format.  
+```{r loading}
+
+url <- getURL("https://raw.githubusercontent.com/diegomdiaz/IS607/master/Final%20Project/lcloans.csv")
+loans <- read.csv(text = url, stringsAsFactors = FALSE)
+```
+
+#Subsetting the Data Set
+
+For this analysis only the "Fully Paid" and "Charged Off" values will be used.
+
+```{r subsetds}
+#Subsetting the loans data into two variables: Loan Status and Loan Description
+loans1 <- select(loans, loan_status, desc, Lenth)
+
+#Filtering the loan data into "Fully Paid" and "Charged Off" loans. 
+ln <- filter(loans1, loans1$loan_status == "Fully Paid" | loans1$loan_status == "Charged Off", loans1$desc != "")
+
+head(ln)
+```
+
+
+#Map of Lending Club's Charged Offs 
+
+```{r default_map}
+
+map <- select(loans, loan_status, addr_state, All.Caps)
+map <- filter(map, loan_status == "Charged Off")
+
+states <- map_data("state")
+
+state.names <- unlist(sapply(map$addr_state, function(x) if(length(state.name[grep(x, state.abb)]) == 0) "District of Columbia" else state.name[grep(x, state.abb)]))
+
+map$addr_state <- tolower(state.names)
+colnames(map)[3] <- "region"
+
+state.counts <- data.frame(table(map$addr_state))
+colnames(state.counts) <- c("region", "Num.Loans")
+
+result <- merge(state.counts, states, by=c("region"))
+result <- result[order(result$order),]
+
+p <- ggplot(result, aes(x=long, y=lat, group=group, fill=Num.Loans)) + geom_polygon() + scale_fill_gradient(low = "yellow", high = "blue") + coord_equal(ratio=1.75)
+
+print(p)
+
+```
+
+# Character Counts
+
+
+> Number of Characters in Description
+
+```{r char_desc}
+## From Factor to Numeric Transformation
+
+ln[ ,"loan_status"] <- as.numeric(as.factor(ln$loan_status)) #challenge
+lnc <- ln
+lnc_paid <- filter(lnc, lnc$loan_status == 2)
+lnc_off <- filter(lnc, lnc$loan_status == 1)
+
+```
+
+> Distribution of Characters
+
+> Boxplot
+
+```{r boxplot }
+boxplot(Lenth ~ loan_status, data = lnc)
+```
+
+> Histogram of Character Frequencies
+
+```{r histo}
+hist(lnc_paid$Lenth, breaks = 10, col="#CCCCFF", freq=FALSE)
+hist(lnc_off$Lenth, breaks = 10, col="#CCCCFF", freq=FALSE)
+
+```
+
+
+> Character Summary Statistics
+
+```{r sum_stats}
+by(lnc$Lenth, lnc$loan_status, length)
+by(lnc$Lenth, lnc$loan_status, summary)
+
+```
+
+
+#Creating a Corpus, DocumentTermMaxtrix and Freq
+
+> Scrubbing the Description Field
+
+```{r dscrub_desc}
+desc1 <- str_replace_all(ln$desc, "Borrower added on ", "")
+desc1[6]
+desc1 <- str_replace_all(desc1, "  \\d{2}/\\d{2}/\\d{2} > ", "")
+desc1[6]
+desc1 <- str_replace_all(desc1, "\\d{2}/\\d{2}/\\d{2} > ", "")
+desc1[6]
+desc1 <- str_replace_all(desc1, "<br>", "")
+desc1[6]
+desc1 <- str_replace_all(desc1, "<br/>", "")
+desc1[6]
+desc1 <- str_replace_all(desc1, "[:punct:]+", " ")
+desc1[6]
+desc1 <- str_replace_all(desc1, "[$[:digit:]+]", "")
+desc1[6]
+desc1 <- str_replace_all(desc1, "  ", " ")
+desc1[6]
+
+#Binding clean description to df
+ln[ ,"desc"] <- NULL
+ln[ ,"desc"] <- desc1
+
+```
+
+
+> Training and Classification Set
+
+```{r training_class}
+
+ln1 <- DataframeSource(ln)
+corpus2 <- Corpus(ln1)
+
+#Creating the Corpus & 
+corpus2 <- tm_map(corpus2, content_transformer(tolower))
+as.character(corpus2[[6]])
+corpus2 <- tm_map(corpus2, removeWords, stopwords("english"))
+as.character(corpus2[[6]])
+corpus2 <- tm_map(corpus2, stemDocument)
+as.character(corpus2[[6]])
+corpus2 <- tm_map(corpus2, stripWhitespace)
+as.character(corpus2[[6]])
+corpus2 <- tm_map(corpus2, PlainTextDocument) # describe a challenge
+
+as.character(corpus2[[6]])
+
+#Creating a Document Term Matrix
+dtm <- DocumentTermMatrix(corpus2)
+
+#Removing sparce terms
+dtm <- removeSparseTerms(dtm, 1-(20/length(corpus2)))
+
+#Freq
+freq <- sort(colSums(as.matrix(dtm)), decreasing = TRUE)
+
+```
+
+> Charged Off
+
+```{r charged_off}
+#Corpus 
+ln_off <- filter(ln, loan_status == 1)
+ln1_off <- DataframeSource(ln_off)
+corpus_off <- Corpus(ln1_off)
+corpus_off <- tm_map(corpus_off, removeWords, stopwords("english"))
+corpus_off <- tm_map(corpus_off, stemDocument)
+corpus_off <- tm_map(corpus_off, stripWhitespace)
+corpus_off <- tm_map(corpus_off, PlainTextDocument)
+
+#Document Term Matrix
+dtm_off <- DocumentTermMatrix(corpus_off)
+
+#Removing sparce terms
+dtm_off <- removeSparseTerms(dtm_off, 1-(20/length(corpus_off)))
+
+#Frequency of off
+freq_off <- sort(colSums(as.matrix(dtm_off)), decreasing = TRUE)
+
+```
+
+> Fully Paid
+
+```{r fully_paid}
+ln_paid <- filter(ln, loan_status == 2)
+ln_paid <- sample_n(ln_paid, 3776, replace = TRUE)
+
+ln1_paid <- DataframeSource(ln_paid)
+
+corpus_paid <- Corpus(ln1_paid)
+corpus_paid <- tm_map(corpus_paid, content_transformer(tolower))
+corpus_paid <- tm_map(corpus_paid, removeWords, stopwords("english"))
+corpus_paid <- tm_map(corpus_paid, stemDocument)
+corpus_paid <- tm_map(corpus_paid, stripWhitespace)
+corpus_paid <- tm_map(corpus_paid, PlainTextDocument)
+
+#DocumentTermMatrix
+dtm_paid <- DocumentTermMatrix(corpus_paid)
+
+#Removing sparce terms
+dtm_paid <- removeSparseTerms(dtm_paid, 1-(20/length(corpus_paid)))
+
+#Frequency of Paid
+freq_paid <- sort(colSums(as.matrix(dtm_paid)), decreasing = TRUE)
+
+```
+
+
+#Frequency and Association  Analysis
+
+
+> Word Frequencies
+
+```{r }
+#Entire Corpus
+findFreqTerms(dtm, lowfreq = 2000)
+
+#Fully Paid Group
+findFreqTerms(dtm_paid, lowfreq = 1000)
+
+#Charged Off Group
+findFreqTerms(dtm_off, lowfreq = 1000)
+```
+
+> Associations
+
+```{r }
+#Fully Paid Group
+findAssocs(dtm_paid, "card", corlimit = 0.3)
+#Charged Off Group
+findAssocs(dtm_off, "bill", corlimit = 0.2)
+
+#Fully Paid Group
+findAssocs(dtm_paid, "good", corlimit = 0.2)
+#Charged Off Group
+findAssocs(dtm_off, "good", corlimit = 0.2)
+
+```
+
+
+> Frequency Diagrams
+
+**Charged Off**
+
+```{r freq_dia_off}
+wf_off <-data.frame(word=names(freq_off), freq=freq_off) 
+subset(wf_off, freq > 1000) %>% 
+  ggplot(aes(word, freq)) + 
+  geom_bar(stat ="identity") + 
+  theme(axis.text.x = element_text(angle=10, hjust = 1))
+
+```
+
+
+**Paid Off**
+
+```{r freq_dia_paid}
+wf_paid <-data.frame(word=names(freq_paid), freq=freq_paid)
+subset(wf_paid, freq > 1000) %>% 
+  ggplot(aes(word, freq)) + 
+  geom_bar(stat ="identity") + 
+  theme(axis.text.x = element_text(angle=10, hjust = 1))
+
+```
+
+
+#Wordclouds
+
+> Classification Set Wordcloud
+
+```{r cloud_class}
+wordcloud(names(freq), freq, min.freq = 1000, scale=c(5, .1), colors=brewer.pal(6, "Dark2"))
+
+```
+
+> Fully Paid Wordcloud
+
+```{r clound_paid}
+wordcloud(names(freq_paid), freq, min.freq = 1000, scale=c(5, .1), colors=brewer.pal(6, "Dark2"))
+
+```
+
+>  Charged Off Wordcloud
+
+```{r cloud_off}
+wordcloud(names(freq_off), freq, min.freq = 1000, scale=c(5, .1), colors=brewer.pal(6, "Dark2"))
+
+```
+
+
+#Classification of Loan Status
+
+> Creating a Container
+
+```{r container}
+container <- create_container(dtm, labels = ln$loan_status, trainSize =1:2000, testSize = 2001:3000, virgin = FALSE)
+```
+
+> Training Set
+
+```{r training_set}
+SVM <- train_model(container, "SVM")
+MAXENT <- train_model(container, "MAXENT")
+GLMNET <- train_model(container, "GLMNET")
+```
+
+> Classification
+
+```{r classification}
+SVMC <- classify_model(container, SVM)
+MAXENTC <- classify_model(container, MAXENT)
+GLMNETC <- classify_model(container, GLMNET)
+```
+
+> Performance & Summaries
+
+```{r performance}
+analytics <- create_analytics(container, cbind(SVMC, MAXENTC, GLMNETC))
+
+topic_summary <- analytics@label_summary
+alg_summary <- analytics@algorithm_summary
+ens_summary <- analytics@ensemble_summary
+doc_summary <- analytics@document_summary
+
+print(topic_summary)
+print(alg_summary)
+
+```
+
+
+
+#Conclusion
+
+> Character Counts
+
+On the character count comparison, the median number of characters for `Fully Paid` loans was higher than the  `Charged Off` loans, 290 vs. 272 respectively. Both groups had a significant number of outliers, but the `Fully Paid` group appeared to have more. Although I am generalizing, I can imagine that the more people write in the description, the more likely they are to pay. 
+
+
+> Word Frequency
+
+The word frequencies between the `Fully Paid` and `Charged Off` looked very similar overall. One exception was that the word `Bill` came up at a top word in the `Charged Off` group. This word did not come up in the `Fully Paid` group - give a set criteria. Correlation analyse of this word shows that this word is strongly correlated to `Medic` which is probably medical bills. 
+
+> Classification Methods
+
+I had high hopes that the classification methods would reasonably predict which loans would be likely to default. Overall I was very disappointed. From the three methods I used, I achieved the highest recall of only 25% from  MAXENT.  
+
+**Recall**  
+SVM = 0%  
+GLMNET = 10%  
+MAXENT = 25%   
+
