@@ -128,7 +128,7 @@ lnc_off <- filter(lnc, lnc$loan_status == 1)
 
 ```
 
-> Distribution of Characters
+# Distribution of Characters
 
 > Boxplot
 
